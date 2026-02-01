@@ -1,0 +1,17 @@
+# Ignore sensitive configuration
+config/config.php
+
+# Ignore directories
+/backups/
+/logs/
+/uploads/
+/invoices/
+
+# Ignore SQL files
+*.sql
+
+# IDE and OS specific files
+.idea/
+.vscode/
+*.DS_Store
+Thumbs.db
