@@ -110,6 +110,13 @@ $currentPath = $_SERVER['PHP_SELF'];
                 </a>
 
                 <?php if (isProcurementOfficer() || isDirector()): ?>
+                <h3 class="navbar-category-title">Procurement & Inventory</h3>
+                <a href="<?php echo APP_URL; ?>/modules/inventory/inventory.php" class="nav-link <?php echo strpos($currentPath, 'inventory') !== false ? 'active' : ''; ?>">
+                    <i class="fas fa-boxes"></i> Inventory Management
+                </a>
+                <?php endif; ?>
+
+                <?php if (isProcurementOfficer() || isDirector()): ?>
                 <h3 class="navbar-category-title">Quotations</h3>
                 <a href="<?php echo APP_URL; ?>/modules/quotations/quotations.php" class="nav-link <?php echo strpos($currentPath, 'quotations') !== false ? 'active' : ''; ?>">
                     <i class="fas fa-list"></i> All Quotations

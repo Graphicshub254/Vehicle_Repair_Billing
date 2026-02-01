@@ -65,12 +65,31 @@ $stmt = $pdo->query("
 ");
 $recent_invoices = $stmt->fetchAll();
 
+// Low Stock Parts Notification
+$lowStockParts = [];
+if (isProcurementOfficer() || isDirector()) {
+    $stmt = $pdo->query("SELECT part_name, quantity_on_hand, reorder_level FROM inventory_parts WHERE quantity_on_hand <= reorder_level ORDER BY part_name");
+    $lowStockParts = $stmt->fetchAll();
+}
+
 include '../../includes/header.php';
 ?>
 
 <div class="page-header">
     <h1><i class="fas fa-home"></i> Dashboard</h1>
 </div>
+
+<?php if (!empty($lowStockParts)): ?>
+<div class="alert alert-warning mb-4">
+    <i class="fas fa-exclamation-triangle"></i> <strong>Low Stock Alert!</strong> The following parts are running low:
+    <ul>
+        <?php foreach ($lowStockParts as $part): ?>
+            <li><?php echo e($part['part_name']); ?> (Current: <?php echo e($part['quantity_on_hand']); ?>, Reorder Level: <?php echo e($part['reorder_level']); ?>)</li>
+        <?php endforeach; ?>
+    </ul>
+    Please <a href="<?php echo APP_URL; ?>/modules/inventory/inventory.php" class="alert-link">manage your inventory</a>.
+</div>
+<?php endif; ?>
 
 <!-- Stats Cards -->
 <div class="stats-grid">

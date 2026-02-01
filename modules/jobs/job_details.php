@@ -71,6 +71,22 @@ foreach ($laborCharges as $labor) {
     $totalLabor += $labor['total_amount'];
 }
 
+// Get parts used for this job
+$stmt = $pdo->prepare("
+    SELECT jp.*, ip.part_name, ip.part_number
+    FROM job_parts jp
+    JOIN inventory_parts ip ON jp.part_id = ip.id
+    WHERE jp.job_id = ?
+    ORDER BY jp.created_at DESC
+");
+$stmt->execute([$jobId]);
+$jobParts = $stmt->fetchAll();
+
+$totalPartsCost = 0;
+foreach ($jobParts as $part) {
+    $totalPartsCost += ($part['quantity_used'] * $part['price_per_unit']);
+}
+
 $totalInvoiced = 0;
 foreach ($invoices as $invoice) {
     $totalInvoiced += $invoice['total_amount'];
@@ -153,6 +169,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['mark_as_completed']))
         $canComplete = false;
         foreach ($pendingSubcontracts as $item) {
             $pendingItems[] = "Subcontract: " . $item['work_description'];
+        }
+    }
+
+    // 4. Check Inventory Parts used in job
+    $stmt = $pdo->prepare("
+        SELECT jp.id, ip.part_name
+        FROM job_parts jp
+        JOIN inventory_parts ip ON jp.part_id = ip.id
+        LEFT JOIN customer_invoice_items cii ON cii.reference_id = jp.id AND cii.item_type = 'inventory_part'
+        WHERE jp.job_id = ? AND cii.id IS NULL
+    ");
+    $stmt->execute([$jobId]);
+    $pendingInventoryParts = $stmt->fetchAll();
+    if (!empty($pendingInventoryParts)) {
+        $canComplete = false;
+        foreach ($pendingInventoryParts as $item) {
+            $pendingItems[] = "Inventory Part: " . $item['part_name'];
         }
     }
 
@@ -309,6 +342,19 @@ include '../../includes/header.php';
     </div>
     
     <div class="stat-card">
+        <div class="stat-icon stat-icon-warning">
+            <i class="fas fa-boxes"></i>
+        </div>
+        <div class="stat-content">
+            <h3><?php echo count($jobParts); ?></h3>
+            <p>Parts Used</p>
+            <div class="stat-trend">
+                <span class="text-muted"><?php echo formatCurrency($totalPartsCost); ?></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card">
         <div class="stat-icon stat-icon-success">
             <i class="fas fa-file-invoice-dollar"></i>
         </div>
@@ -370,6 +416,58 @@ include '../../includes/header.php';
                     <tr style="font-weight: bold; background: #f9fafb;">
                         <td colspan="5" class="text-right">Total Labor:</td>
                         <td colspan="3"><?php echo formatCurrency($totalLabor); ?></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Parts Used -->
+<div class="card">
+    <div class="card-header">
+        <h3><i class="fas fa-boxes"></i> Parts Used</h3>
+        <a href="<?php echo APP_URL; ?>/modules/jobs/add_part_to_job.php?job_id=<?php echo $jobId; ?>" class="btn btn-sm btn-primary">
+            <i class="fas fa-plus"></i> Add Part
+        </a>
+    </div>
+    <div class="card-body">
+        <?php if (empty($jobParts)): ?>
+            <p class="text-center text-muted">
+                No parts used yet. <a href="<?php echo APP_URL; ?>/modules/jobs/add_part_to_job.php?job_id=<?php echo $jobId; ?>">Add the first part</a>
+            </p>
+        <?php else: ?>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Part Name</th>
+                        <th>Part No.</th>
+                        <th>Qty. Used</th>
+                        <th>Price/Unit</th>
+                        <th>Total Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($jobParts as $part): ?>
+                    <tr>
+                        <td><?php echo e($part['part_name']); ?></td>
+                        <td><?php echo e($part['part_number'] ?: '-'); ?></td>
+                        <td><?php echo e($part['quantity_used']); ?></td>
+                        <td><?php echo formatCurrency($part['price_per_unit']); ?></td>
+                        <td><strong><?php echo formatCurrency($part['quantity_used'] * $part['price_per_unit']); ?></strong></td>
+                        <td>
+                            <a href="<?php echo APP_URL; ?>/modules/jobs/edit_job_part.php?id=<?php echo $part['id']; ?>" class="btn btn-sm btn-warning">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <tr style="font-weight: bold; background: #f9fafb;">
+                        <td colspan="4" class="text-right">Total Parts:</td>
+                        <td colspan="2"><?php echo formatCurrency($totalPartsCost); ?></td>
                     </tr>
                 </tbody>
             </table>
