@@ -15,3 +15,6 @@ config/config.php
 .vscode/
 *.DS_Store
 Thumbs.db
+
+# Ignore home directory
+home/
